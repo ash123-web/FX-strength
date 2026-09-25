@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FX Strength Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0D1215; --panel:#151C20; --panel-2:#1A2226; --line:#28333A;
+    --ink:#E7EDEF; --ink-soft:#8AA0A8; --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',system-ui,sans-serif;
+    --up:#5BAE8F; --up-dim:#20302A; --down:#C9754F; --down-dim:#332420; --neutral:#C9A24F; --accent:#4E8FBF;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); padding-bottom:40px; }
+  .wrap { max-width:1080px; margin:0 auto; padding:20px 16px 0; }
+  header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+  h1 { font-size:1.3rem; margin:0; font-weight:700; font-family:var(--mono); }
+  .status-badge { font-family:var(--mono); font-size:0.75rem; display:flex; align-items:center; gap:5px; }
+  .dot { width:7px; height:7px; border-radius:50%; }
+  .dot.live { background:var(--up); } .dot.delayed { background:var(--neutral); } .dot.stale, .dot.offline { background:var(--down); }
+
+  .tf-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; }
+  .tf-btn { background:var(--panel-2); border:1px solid var(--line); color:var(--ink-soft); font-family:var(--mono); font-size:0.78rem; padding:6px 12px; border-radius:6px; cursor:pointer; }
+  .tf-btn.active { background:var(--accent); color:#0B1518; border-color:var(--accent); font-weight:600; }
+
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+  .panel h2 { font-size:0.85rem; margin:0 0 12px; color:var(--ink-soft); font-weight:600; letter-spacing:0.02em; text-transform:uppercase; }
+
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+  th { text-align:left; font-family:var(--mono); font-size:0.7rem; color:var(--ink-soft); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--line); cursor:pointer; user-select:none; }
+  td { padding:9px 8px; border-bottom:1px solid var(--line); font-family:var(--mono); }
+  tr:last-child td { border-bottom:none; }
+  .cur { font-weight:700; }
+  .val.up { color:var(--up); } .val.down { color:var(--down); } .val.na { color:var(--ink-soft); }
+  .status-tag { font-family:var(--sans); font-size:0.72rem; padding:2px 8px; border-radius:12px; font-weight:600; }
+  .status-tag.up { background:var(--up-dim); color:var(--up); } .status-tag.down { background:var(--down-dim); color:var(--down); }
+  .status-tag.na { background:var(--panel-2); color:var(--ink-soft); }
+
+  .empty-note { font-size:0.82rem; color:var(--ink-soft); padding:10px 0; }
+  .grid2 { display:grid; grid-template-columns:1fr; gap:16px; }
+  @media(min-width:720px){ .grid2 { grid-template-columns:1.3fr 1fr; } }
+
+  .matrix-table td, .matrix-table th { text-align:center; padding:8px 6px; }
+  .matrix-table th { font-weight:700; }
+  .mcell { border-radius:4px; padding:4px 6px; font-size:0.78rem; }
+
+  .sw-row { display:flex; gap:12px; flex-wrap:wrap; }
+  .sw-box { flex:1; min-width:140px; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:12px; }
+  .sw-box .lbl { font-size:0.7rem; color:var(--ink-soft); margin-bottom:6px; font-family:var(--mono); }
+  .sw-box .cv { font-family:var(--mono); font-weight:700; font-size:0.95rem; }
+  .diff-note { font-size:0.78rem; color:var(--ink-soft); margin-top:10px; }
+
+  select, input, button.form-btn { background:var(--panel-2); border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:8px 10px; font-family:var(--sans); font-size:0.85rem; }
+  .pair-stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+  .pstat { background:var(--panel-2); border:1px solid var(--line); border-radius:7px; padding:10px 12px; }
+  .pstat .l { font-size:0.68rem; color:var(--ink-soft); margin-bottom:4px; }
+  .pstat .v { font-family:var(--mono); font-weight:600; font-size:0.92rem; }
+  .diff-banner { margin-top:12px; background:var(--panel-2); color:var(--ink); font-family:var(--mono); font-weight:700; padding:10px 12px; border-radius:7px; text-align:center; }
+
+  .alert-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-top:1px solid var(--line); font-size:0.82rem; gap:8px; }
+  .alert-row:first-child { border-top:none; }
+  .alert-form { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .alert-form select, .alert-form input { flex:1; min-width:100px; }
+  .rm-btn { color:var(--down); background:none; border:none; cursor:pointer; font-size:0.9rem; }
+
+  .status-strip { display:flex; flex-wrap:wrap; gap:18px; font-family:var(--mono); font-size:0.78rem; color:var(--ink-soft); }
+  .status-strip b { color:var(--ink); }
+  footer { text-align:center; font-size:0.72rem; color:var(--ink-soft); margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>FOREX CURRENCY STRENGTH</h1>
+    <div class="status-badge"><span class="dot offline" id="statusDot"></span><span id="statusText">Connecting…</span></div>
+  </header>
+
+  <div class="tf-row" id="tfRow">
+    <button class="tf-btn active" data-tf="5m">5m</button><button class="tf-btn" data-tf="15m">15m</button>
+    <button class="tf-btn" data-tf="30m">30m</button><button class="tf-btn" data-tf="1h">1H</button>
+    <button class="tf-btn" data-tf="4h">4H</button><button class="tf-btn" data-tf="1d">1D</button>
+    <button class="tf-btn" data-tf="custom">CUSTOM</button>
+  </div>
+  <div id="customRow" style="display:none;margin-bottom:14px;">
+    <input type="number" id="customMinutes" placeholder="Minutes (e.g. 90)" style="width:160px;">
+    <button class="form-btn" id="customGoBtn">Go</button>
+  </div>
+
+  <div class="panel">
+    <h2>Currency Strength · Momentum · Status</h2>
+    <table id="strengthTable">
+      <thead><tr><th data-k="strength">Currency</th><th data-k="strength">Strength</th><th data-k="momentum">Momentum</th><th data-k="acceleration">Accel.</th><th>Status</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty-note" id="strengthEmpty" style="display:none;"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2 id="chartTitle">USD Strength — last 24h</h2>
+      <select id="chartCurrencySelect" style="margin-bottom:10px;">
+        <option>USD</option><option>EUR</option><option>GBP</option><option>JPY</option>
+        <option>CHF</option><option>AUD</option><option>CAD</option><option>NZD</option>
+      </select>
+      <svg viewBox="0 0 460 160" style="width:100%;height:auto;" id="chartSvg"><g id="chartLines"></g></svg>
+      <div class="empty-note" id="chartEmpty" style="display:none;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Strong vs Weak</h2>
+      <div id="swContent"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Relative Strength Matrix</h2>
+    <table class="matrix-table" id="matrixTable"></table>
+    <div class="empty-note" id="matrixEmpty" style="display:none;"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Pair Analysis</h2>
+    <select id="pairSelect">
+      <option>EUR/USD</option><option>GBP/USD</option><option>USD/JPY</option><option>USD/CHF</option>
+      <option>USD/CAD</option><option>AUD/USD</option><option>NZD/USD</option><option>EUR/GBP</option>
+    </select>
+    <div class="pair-stats" id="pairStats"></div>
+    <div class="diff-banner" id="diffBanner"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Alerts</h2>
+    <div id="alertsList"></div>
+    <div class="alert-form">
+      <select id="alertType">
+        <option value="strength_change">Strength changes by more than...</option>
+        <option value="crosses_positive">Crosses from negative to positive</option>
+        <option value="becomes_strongest">Becomes the strongest currency</option>
+        <option value="momentum_direction_change">Momentum direction changes</option>
+      </select>
+      <select id="alertCurrency">
+        <option>USD</option><option>EUR</option><option>GBP</option><option>JPY</option>
+        <option>CHF</option><option>AUD</option><option>CAD</option><option>NZD</option>
+      </select>
+      <input type="number" id="alertThreshold" placeholder="Threshold (e.g. 0.3)" step="0.01">
+      <button class="form-btn" id="addAlertBtn">Add alert</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Market Data</h2>
+    <div class="status-strip">
+      <span>Provider: <b id="providerName">—</b></span>
+      <span>Status: <b id="statusState">—</b></span>
+      <span>Last update: <b id="lastUpdate">—</b></span>
+    </div>
+  </div>
+
+  <footer>Decision-support tool only. Not financial advice. No automated trading is performed by this system.</footer>
+</div>
+
+<script>
+  let currentTimeframe = "5m";
+
+  async function fetchJSON(url) {
+    const res = await fetch(url);
+    return { status: res.status, data: await res.json() };
+  }
+
+  function fmtNum(v) {
+    if (v === null || v === undefined) return { text: "—", cls: "na" };
+    return { text: (v > 0 ? "+" : "") + v.toFixed(2), cls: v > 0 ? "up" : v < 0 ? "down" : "na" };
+  }
+
+  async function loadStrengthTable() {
+    const { status, data } = await fetchJSON(`/api/strength/current?timeframe=${currentTimeframe}`);
+    const tbody = document.querySelector('#strengthTable tbody');
+    const emptyNote = document.getElementById('strengthEmpty');
+    if (status === 202) {
+      tbody.innerHTML = '';
+      emptyNote.style.display = 'block';
+      emptyNote.textContent = data.message;
+      return;
+    }
+    emptyNote.style.display = 'none';
+    tbody.innerHTML = data.currencies.map(c => {
+      const s = fmtNum(c.strength), m = fmtNum(c.momentum), a = fmtNum(c.acceleration);
+      const statusCls = c.status === "STRENGTHENING" ? "up" : c.status === "WEAKENING" ? "down" : "na";
+      return `<tr>
+        <td class="cur">${c.currency}</td>
+        <td class="val ${s.cls}">${s.text}</td>
+        <td class="val ${m.cls}">${m.text}</td>
+        <td class="val ${a.cls}">${a.text}</td>
+        <td><span class="status-tag ${statusCls}">${c.status.replace(/_/g,' ')}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function loadMatrix() {
+    const { status, data } = await fetchJSON(`/api/matrix?timeframe=${currentTimeframe}`);
+    const table = document.getElementById('matrixTable');
+    const emptyNote = document.getElementById('matrixEmpty');
+    if (status !== 200 || !data.currencies || data.currencies.length === 0) {
+      table.innerHTML = ''; emptyNote.style.display = 'block'; emptyNote.textContent = 'No data yet.';
+      return;
+    }
+    emptyNote.style.display = 'none';
+    let html = '<tr><th></th>' + data.currencies.map(c => `<th>${c}</th>`).join('') + '</tr>';
+    data.currencies.forEach(row => {
+      html += `<tr><th>${row}</th>`;
+      data.currencies.forEach(col => {
+        const v = data.matrix[row][col];
+        if (v === null) { html += '<td>—</td>'; return; }
+        const bg = v > 0.15 ? 'var(--up-dim)' : v < -0.15 ? 'var(--down-dim)' : 'var(--panel-2)';
+        const fg = v > 0.15 ? 'var(--up)' : v < -0.15 ? 'var(--down)' : 'var(--ink-soft)';
+        html += `<td><span class="mcell" style="background:${bg};color:${fg}">${v>0?'+':''}${v.toFixed(2)}</span></td>`;
+      });
+      html += '</tr>';
+    });
+    table.innerHTML = html;
+  }
+
+  async function loadStrongWeak() {
+    const { data } = await fetchJSON(`/api/strong-weak?timeframe=${currentTimeframe}`);
+    const el = document.getElementById('swContent');
+    if (data.status === "insufficient_data") {
+      el.innerHTML = '<div class="empty-note">Not enough data yet.</div>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="sw-row">
+        <div class="sw-box"><div class="lbl">STRONGEST</div><div class="cv" style="color:var(--up)">${data.strongest.join(', ')}</div></div>
+        <div class="sw-box"><div class="lbl">WEAKEST</div><div class="cv" style="color:var(--down)">${data.weakest.join(', ')}</div></div>
+      </div>
+      <div class="diff-note">${data.largestDifferential.note} <strong>${data.largestDifferential.pair.join(' vs ')}</strong> (${data.largestDifferential.value})</div>
+    `;
+  }
+
+  async function loadChart() {
+    const currency = document.getElementById('chartCurrencySelect').value;
+    document.getElementById('chartTitle').textContent = `${currency} Strength — last 24h`;
+    const { data } = await fetchJSON(`/api/strength/history?currency=${currency}&timeframe=1h&hours=24`);
+    const g = document.getElementById('chartLines');
+    const emptyNote = document.getElementById('chartEmpty');
+    g.innerHTML = '';
+    if (!data.points || data.points.length < 2) {
+      emptyNote.style.display = 'block';
+      emptyNote.textContent = 'Not enough history yet — check back after a few ingestion cycles.';
+      return;
+    }
+    emptyNote.style.display = 'none';
+    const vals = data.points.map(p => p.strength).filter(v => v !== null);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const w = 460, h = 160, pad = 20;
+    const pts = data.points.map((p, i) => {
+      const x = pad + (i / (data.points.length - 1)) * (w - 2 * pad);
+      const y = (max === min) ? h / 2 : h - pad - ((p.strength - min) / (max - min)) * (h - 2 * pad);
+      return `${x},${y}`;
+    }).join(' ');
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    line.setAttribute('points', pts);
+    line.setAttribute('fill', 'none');
+    line.setAttribute('stroke', 'var(--accent)');
+    line.setAttribute('stroke-width', '2');
+    g.appendChild(line);
+  }
+
+  async function loadPair() {
+    const symbol = document.getElementById('pairSelect').value;
+    const { status, data } = await fetchJSON(`/api/pair-analysis?symbol=${encodeURIComponent(symbol)}&timeframe=${currentTimeframe === 'custom' ? '1h' : currentTimeframe}`);
+    const statsEl = document.getElementById('pairStats');
+    const diffEl = document.getElementById('diffBanner');
+    if (status !== 200) {
+      statsEl.innerHTML = '<div class="empty-note">No data yet for this pair.</div>';
+      diffEl.textContent = '';
+      return;
+    }
+    const [base, quote] = symbol.split('/');
+    statsEl.innerHTML = `
+      <div class="pstat"><div class="l">CURRENT PRICE</div><div class="v">${data.currentPrice}</div></div>
+      <div class="pstat"><div class="l">1H CHANGE</div><div class="v">${data.changes['1h'] ?? '—'}%</div></div>
+      <div class="pstat"><div class="l">4H CHANGE</div><div class="v">${data.changes['4h'] ?? '—'}%</div></div>
+      <div class="pstat"><div class="l">1D CHANGE</div><div class="v">${data.changes['1d'] ?? '—'}%</div></div>
+      <div class="pstat"><div class="l">${base} STRENGTH</div><div class="v">${data.baseStrength?.toFixed(2) ?? '—'}</div></div>
+      <div class="pstat"><div class="l">${quote} STRENGTH</div><div class="v">${data.quoteStrength?.toFixed(2) ?? '—'}</div></div>
+    `;
+    diffEl.textContent = data.strengthDifferential !== null ? `Strength differential: ${data.strengthDifferential > 0 ? '+' : ''}${data.strengthDifferential}` : 'Strength differential: —';
+  }
+
+  async function loadMarketStatus() {
+    const { data } = await fetchJSON('/api/market-status');
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    const stateEl = document.getElementById('statusState');
+    dot.className = 'dot ' + data.state.toLowerCase();
+    text.textContent = data.state;
+    stateEl.textContent = data.state;
+    document.getElementById('providerName').textContent = data.provider || '—';
+    document.getElementById('lastUpdate').textContent = data.lastUpdate ? new Date(data.lastUpdate).toLocaleTimeString() : '—';
+  }
+
+  async function loadAlerts() {
+    const { data } = await fetchJSON('/api/alerts');
+    const el = document.getElementById('alertsList');
+    if (data.length === 0) {
+      el.innerHTML = '<div class="empty-note">No alerts configured yet.</div>';
+    } else {
+      el.innerHTML = data.map(a => `
+        <div class="alert-row">
+          <span>${a.type.replace(/_/g,' ')}${a.currency ? ' — ' + a.currency : ''}${a.threshold ? ' (' + a.threshold + ')' : ''}</span>
+          <button class="rm-btn" data-id="${a.id}">✕</button>
+        </div>`).join('');
+      el.querySelectorAll('.rm-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await fetch(`/api/alerts/${btn.dataset.id}`, { method: 'DELETE' });
+          loadAlerts();
+        });
+      });
+    }
+    const { data: fired } = await fetchJSON('/api/alerts/triggered');
+    if (fired.length > 0 && Notification && Notification.permission === 'granted') {
+      fired.forEach(f => new Notification('FX Strength Alert', { body: f.message }));
+    }
+  }
+
+  document.getElementById('addAlertBtn').addEventListener('click', async () => {
+    const type = document.getElementById('alertType').value;
+    const currency = document.getElementById('alertCurrency').value;
+    const threshold = parseFloat(document.getElementById('alertThreshold').value) || null;
+    await fetch('/api/alerts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, currency, threshold, timeframe: currentTimeframe === 'custom' ? '1h' : currentTimeframe }) });
+    loadAlerts();
+  });
+
+  if (window.Notification && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  function refreshAll() {
+    loadStrengthTable();
+    loadMatrix();
+    loadStrongWeak();
+    loadChart();
+    loadPair();
+    loadMarketStatus();
+    loadAlerts();
+  }
+
+  document.querySelectorAll('.tf-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentTimeframe = btn.dataset.tf;
+      document.getElementById('customRow').style.display = currentTimeframe === 'custom' ? 'block' : 'none';
+      if (currentTimeframe !== 'custom') refreshAll();
+    });
+  });
+
+  document.getElementById('customGoBtn').addEventListener('click', async () => {
+    const minutes = document.getElementById('customMinutes').value;
+    const { data } = await fetchJSON(`/api/strength/custom?minutes=${minutes}`);
+    const tbody = document.querySelector('#strengthTable tbody');
+    const emptyNote = document.getElementById('strengthEmpty');
+    if (data.status === 'insufficient_data') {
+      tbody.innerHTML = ''; emptyNote.style.display = 'block'; emptyNote.textContent = data.message;
+      return;
+    }
+    emptyNote.style.display = 'none';
+    tbody.innerHTML = data.currencies.map(c => {
+      const s = fmtNum(c.strength);
+      return `<tr><td class="cur">${c.currency}</td><td class="val ${s.cls}">${s.text}</td><td class="val na">—</td><td class="val na">—</td><td><span class="status-tag na">CUSTOM TF</span></td></tr>`;
+    }).join('');
+  });
+
+  document.getElementById('chartCurrencySelect').addEventListener('change', loadChart);
+  document.getElementById('pairSelect').addEventListener('change', loadPair);
+
+  refreshAll();
+  setInterval(refreshAll, 15000); // dashboard polling interval — independent of the backend's own ingestion schedule
+</script>
+</body>
+</html>

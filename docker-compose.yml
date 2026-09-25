@@ -1,0 +1,13 @@
+services:
+  fx-strength:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - fx-data:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  fx-data:

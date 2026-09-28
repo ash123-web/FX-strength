@@ -25,8 +25,6 @@
 
 const PAIRS = [
   "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "USD/CAD", "AUD/USD", "NZD/USD",
-  "EUR/GBP", "EUR/JPY", "GBP/JPY", "EUR/CHF", "AUD/JPY", "NZD/JPY", "EUR/AUD",
-  "GBP/CHF", "EUR/CAD", "CAD/JPY", "EUR/NZD"
 ];
 // These 18 pairs give every one of the 8 major currencies (USD, EUR, GBP,
 // JPY, CHF, AUD, CAD, NZD) at least 3 contributing pairs each — verified
